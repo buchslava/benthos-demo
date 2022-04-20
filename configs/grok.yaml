@@ -1,0 +1,25 @@
+input:
+  resource: input_log
+
+input_resources:
+  - label: input_log
+    file:
+      paths: [ ./data/in.log ]
+
+pipeline:
+  processors:
+    - grok:
+        expressions:
+          - '%{LOGLINE}'
+        pattern_definitions:
+          LOGLINE: '%{NOTSPACE:field1} %{NOTSPACE:field2} %{NOTSPACE:field3} %{NOTSPACE:field4}'
+    - bloblang: |
+        root = {}
+        root.date = this.field1
+        root.id = this.field2
+        root.name = this.field3
+        root.value = this.field4
+output:
+  label: ""
+  stdout:
+    codec: lines

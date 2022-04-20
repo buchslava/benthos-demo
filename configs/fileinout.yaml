@@ -1,0 +1,33 @@
+input:
+  resource: foo
+
+pipeline:
+  processors:
+    - resource: bar
+    - cache:
+        operator: set
+        resource: baz
+        key: ${! json("id") }
+        value: ${! content() }
+
+output:
+  resource: buz
+
+input_resources:
+  - label: foo
+    file:
+      paths: [ ./data/jsonin ]
+
+processor_resources:
+  - label: bar
+    bloblang: 'root = content.uppercase()'
+
+cache_resources:
+  - label: baz
+    memory:
+      ttl: 300
+
+output_resources:
+  - label: buz
+    file:
+      path: ./out/result

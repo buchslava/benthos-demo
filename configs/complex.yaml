@@ -1,0 +1,50 @@
+input:
+  http_client:
+    url: http://localhost:3100/data
+    verb: GET
+    rate_limit: foo_searches
+
+rate_limit_resources:
+  - label: foo_searches
+    local:
+      count: 1
+      interval: 5s
+
+buffer:
+  system_window:
+    timestamp_mapping: root = this.date
+    size: 20s
+
+pipeline:
+  processors:
+    - cache:
+        resource: foocache
+        operator: add
+        key: '${! json("key") }'
+        value: "storeme"
+    - dedupe:
+        cache: foocache
+        key: ${! json("date") }-${! json("value") }-${! json("key") }
+
+cache_resources:
+  - label: foocache
+    memcached:
+      addresses:
+        - localhost:11211
+      ttl: 60
+
+output:
+  broker:
+    outputs:
+      - stdout: {}
+        processors:
+          - group_by_value:
+              value: ${! json("key") }
+          - bloblang: |
+              root = if batch_index() == 0 {
+                {
+                  "key": this.key,
+                  "created_at": meta("window_end_timestamp"),
+                  "total": json("value").from_all().sum(),
+                }
+              } else { deleted() }
